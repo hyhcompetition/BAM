@@ -39,7 +39,7 @@ def get_parser():
     parser = argparse.ArgumentParser(description='PyTorch Semantic Segmentation')
     parser.add_argument('--arch', type=str, default='PSPNet') # 
     parser.add_argument('--viz', action='store_true', default=False)
-    parser.add_argument('--config', type=str, default='config/pascal/pascal_split0_vgg_base.yaml', help='config file') # coco/coco_split0_resnet50.yaml
+    parser.add_argument('--config', type=str, default='config/defect/defect_resnet50_base.yaml', help='config file') # coco/coco_split0_resnet50.yaml
     parser.add_argument('--local_rank', type=int, default=-1, help='number of cpu threads to use during batch generation')    
     parser.add_argument('--opts', help='see config/ade20k/ade20k_pspnet50.yaml for all options', default=None, nargs=argparse.REMAINDER)
     args = parser.parse_args()
@@ -151,6 +151,8 @@ def main():
         train_data = dataset.BaseData(split=args.split, mode='train', data_root=args.data_root, data_list=args.train_list, \
                                     data_set=args.data_set, use_split_coco=args.use_split_coco, \
                                     transform=train_transform, main_process=main_process(), batch_size=args.batch_size)
+    if args.data_set == 'defect':
+        train_data = dataset.BaseDefect(data_root=args.data_root, mode="train", transform=train_transform)
     train_sampler = DistributedSampler(train_data) if args.distributed else None
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.batch_size, num_workers=args.workers, \
                                                 pin_memory=True, sampler=train_sampler, drop_last=True, \
@@ -171,6 +173,8 @@ def main():
             val_data = dataset.BaseData(split=args.split, mode='val', data_root=args.data_root, data_list=args.val_list, \
                                         data_set=args.data_set, use_split_coco=args.use_split_coco, \
                                         transform=val_transform, main_process=main_process(), batch_size=args.batch_size_val)
+        if args.data_set == 'defect':
+            val_data = dataset.BaseDefect(data_root=args.data_root, mode="val", transform=val_transform)
         val_loader = torch.utils.data.DataLoader(val_data, batch_size=args.batch_size_val, shuffle=False, num_workers=args.workers, pin_memory=False, sampler=None)
         if args.ori_resize:
             assert args.batch_size_val == 1
@@ -250,6 +254,7 @@ def train(train_loader, model, optimizer, epoch):
     end = time.time()
     val_time = 0.
     max_iter = args.epochs * len(train_loader)
+
     if main_process():
         print('Warmup: {}'.format(args.warmup))
 

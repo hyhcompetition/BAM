@@ -87,6 +87,8 @@ def make_dataset(split=0, data_root=None, data_list=None, sub_list=None, filter_
 
 
 
+
+
 class SemData(Dataset):
     def __init__(self, split=3, shot=1, data_root=None, base_data_root=None, data_list=None, data_set=None, use_split_coco=False, \
                         transform=None, transform_tri=None, mode='train', ann_type='mask', \
@@ -675,4 +677,54 @@ class BaseData(Dataset):
             return image, label, raw_label
         else:
             return image, label
-      
+
+class BaseDefect(Dataset):
+    def __init__(self, data_root, mode, transform) -> None:
+        self.image_dir = os.path.join(data_root, "images")
+        self.label_dir = os.path.join(data_root, "annotations")
+        self.mode = mode
+        if mode == "train":
+            list_txt = os.path.join(data_root, "imagesets/train.txt")
+        else:
+            list_txt = os.path.join(data_root, "imagesets/test.txt")
+            
+        self.data_list = []
+        with open(list_txt, "r") as f:
+            data = f.read().splitlines()    
+        for s in data:
+            name = s.split()[0]
+            idx = s.split()[1]
+            self.data_list.append((name,idx))
+        
+        self.transform = transform
+# zipper-combined-002.png 28
+
+    def __len__(self):
+        return len(self.data_list)
+        
+    def __getitem__(self, index):
+        name, cls = self.data_list[index]
+        image_path = os.path.join(self.image_dir,name)
+        label_path = os.path.join(self.label_dir,name)
+        image = cv2.imread(image_path, cv2.IMREAD_COLOR) 
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  
+        image = np.float32(image)
+        label = cv2.imread(label_path, cv2.IMREAD_GRAYSCALE)
+        label_tmp = label.copy()
+
+
+        select_pix = np.where(label_tmp == 255)
+        label[select_pix[0],select_pix[1]] = cls
+                
+        raw_label = label.copy()
+
+        if self.transform is not None:
+            image, label = self.transform(image, label)
+
+        # Return
+        if self.mode == 'val':
+            return image, label, raw_label
+        else:
+            return image, label
+        
+        
